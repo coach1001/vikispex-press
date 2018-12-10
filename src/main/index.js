@@ -4,17 +4,17 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 
 const SerialPort = require('serialport')
 const Readline = require('@serialport/parser-readline')
-const port = new SerialPort('COM2', { baudRate: 57600, autoOpen: false })
+const port = new SerialPort('COM1', { baudRate: 9600, autoOpen: false })
 const parser = port.pipe(new Readline({ delimiter: '\n' }))
 const crc16 = require('js-crc').crc16
 
 let dataOut = {
-  pwm0: 16000,
-  pwm1: 1000,
-  r0: 1,
+  pwm0: 0,
+  pwm1: 0,
+  r0: 0,
   r1: 0,
-  r2: 1,
-  r3: 1,
+  r2: 0,
+  r3: 0,
   kS: 0
 }
 
@@ -88,9 +88,10 @@ function createWindow () {
    * Initial window options
    */
   mainWindow = new BrowserWindow({
-    height: 563,
+    height: 768,
     useContentSize: true,
-    width: 1000
+    width: 1024
+    // frame: false
   })
 
   mainWindow.loadURL(winURL)
@@ -106,9 +107,11 @@ function createWindow () {
     ipcMain.on('data-get', (event, arg) => {
       event.sender.send('data-get-reply', dataIn)
     })
-    /* ipcMain.on('data-send', (event, arg) => {
-      dataOut = arg.dataOut
-    }) */
+
+    ipcMain.on('data-set', (event, arg) => {
+      Object.assign(dataOut, arg)
+    })
+
     sendData()
   })
 
@@ -134,6 +137,11 @@ app.on('window-all-closed', () => {
       console.log(error)
       console.log('Serial Port Closed!...')
       app.quit()
+    })
+  } else {
+    port.close((error) => {
+      console.log(error)
+      console.log('Serial Port Closed!...')
     })
   }
 })
