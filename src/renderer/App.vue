@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <b-card class="mt-5">
+    <!-- <b-card class="mt-5">
       {{receivedDataAt}}
       <div>{{data}}</div>
       <input
@@ -23,7 +23,7 @@
       <span v-text="outputs.pwm1"></span>
       <input type="checkbox" v-model="outputs.r0" @change="sendData()">
       <input type="checkbox" v-model="outputs.r1" @change="sendData()">
-    </b-card>
+    </b-card> -->
     <!-- <b-navbar type="dark" variant="dark">
       <b-row class="w-100">
         <b-col></b-col>

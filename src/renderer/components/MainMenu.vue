@@ -2,7 +2,7 @@
   <b-card border-variant="secondary" align="center" class="mt-5">
     <h3>Main Menu</h3>
     <b-card-body>
-      <b-btn :block="true" variant="outline-secondary">Select Test</b-btn>
+      <b-btn :block="true" variant="outline-secondary" @click="route('/test-select')">Select Test</b-btn>
       <b-btn :block="true" variant="outline-secondary" class="mt-4">View Results</b-btn>
       <b-btn :block="true" variant="outline-secondary" class="mt-4">Settings</b-btn>
       <b-row>
@@ -24,6 +24,9 @@ export default {
   methods: {
     exitApplication() {
       this.$root.$emit('bv::show::modal', 'exitApplication')
+    },
+    route(url) {
+      this.$router.push(url)
     }
   }
 }

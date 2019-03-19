@@ -1,0 +1,176 @@
+{
+  "machineSettings": {
+    "type": "Dynamic Creep",
+    "commPort": "COM7",
+    "baudRate": 38400,
+    "load": {
+      "channels": [
+        {
+          "unit": "kN",
+          "type": "input",
+          "dataChannel": "adc0",
+          "mainChannel": true,
+          "coff": [0.001, 0.01, 0.1, 1],
+          "calc": "calc.adc0*calc.adc0*calc.adc0*calc.coff[0]+calc.adc0*calc.adc0*calc.coff[1]+calc.adc0*calc.coff[2]+calc.coff[3]",
+          "realMin": -5,
+          "realMax": 160,
+          "samples": 8,
+          "realValuePrecision": 2
+        }
+      ]
+    },
+    "displacement": {
+      "channels": [
+        {
+          "type": "input",
+          "unit": "mm",
+          "dataChannel": "adc2",
+          "dataMin": 5,
+          "dataMax": 1023,
+          "mainChannel": true,
+          "length": 50,
+          "calc": "(calc.adc2/(calc.dataMax-calc.dataMin))*calc.length",
+          "realMin": 5,
+          "realMax": 45,
+          "samples": 8,
+          "realValuePrecision": 2
+        }
+      ]
+    },
+    "limits": {
+      "channels": [
+        {
+          "type": "input",
+          "unit": "integer",
+          "dataChannel": "sw0",
+          "calc": "sw0",
+          "activatedValue": 1
+        },
+        {
+          "type": "input",
+          "unit": "integer",
+          "dataChannel": "sw0",
+          "calc": "sw0",
+          "activatedValue": 1
+        }
+      ]
+    },
+    "motor": {
+      "channels": [
+        {
+          "type": "output",
+          "unit": "integer",
+          "dataChannel": "pwm0",
+          "mainChannel": true,
+          "calc": "if(calc.out+calc.outMin > calc.outMax) {calc.out = calc.outMax} else if(calc.outMin+calc.out < calc.outMin) {calc.out = calc.outMin} else {calc.out = calc.out+calc.outMin}",
+          "outMin": 600,
+          "outMax": 16000
+        }
+      ],
+      "manual": {
+        "channelValues": [1000]
+      }
+    },
+    "direction": {
+      "channels": [
+        {
+          "type": "output",
+          "unit": "integer",
+          "dataChannel": "r1",
+          "calc": "out"
+        },
+        {
+          "type": "output",
+          "unit": "integer",
+          "dataChannel": "r2",
+          "calc": "out"
+        }
+      ],
+      "forward": {
+        "channelValues": [0, 1]
+      },
+      "reverse": {
+        "channelValues": [1, 0]
+      },
+      "neutral": {
+        "channelValues": [0, 0]
+      }
+    }
+  },
+  "testType": ["RATE_OF_LOADING", "RATE_OF_DISPLACEMENT", "STATIC_CREEP", "DYNAMIC_CREEP"],
+  "tests": [
+    {
+      "name": "Dynamic Creep",
+      "testType": "DYNAMIC_CREEP",
+      "calculated": {
+        "load": {
+          "unit": "kN",
+          "variable": "load",
+          "calc": "(((input.diameter.value/2)*(input.diameter.value/2)*Math.PI)/1000)*input.stress.value"
+        }
+      },
+      "inputs": {
+        "conditioningCycles": {
+          "unit": "integer",
+          "default": 30,
+          "value": 30,
+          "min": 0,
+          "max": 200,
+          "label": "Conditioning cycles",
+          "required": true,
+          "variable": "conditioningCycles",
+          "htmlType": "number"
+        },
+        "cycles": {
+          "unit": "integer",
+          "default": 3600,
+          "value": 3600,
+          "min": 0,
+          "max": 9999999,
+          "label": "Cycles",
+          "variable": "cycle",
+          "htmlType": "number"
+        },
+        "stress": {
+          "unit": "kPa",
+          "default": 60,
+          "value": 60,
+          "min": 0,
+          "max": 200,
+          "label": "Stress",
+          "variable": "stress",
+          "htmlType": "number"
+        },
+        "diameter": {
+          "unit": "mm",
+          "default": 100,
+          "value": 100,
+          "min": 10,
+          "max": 500,
+          "label": "Diameter",
+          "variable": "diameter",
+          "htmlType": "number"
+        },
+        "frequency": {
+          "unit": "Hz",
+          "default": 0.5,
+          "min": 0.01,
+          "max": 4,
+          "label": "Frequency",
+          "variable": "frequency",
+          "htmlType": "number"
+        },
+        "sampleHeight": {
+          "unit": "mm",
+          "default": 60,
+          "value": 60,
+          "min": 20,
+          "max": 300,
+          "label": "Sample height",
+          "variable": "sampleHeight",
+          "htmlType": "number"
+        }
+      }
+    }
+  ]
+}

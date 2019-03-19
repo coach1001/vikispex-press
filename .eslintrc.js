@@ -19,7 +19,8 @@ module.exports = {
     'space-before-function-paren': 0,
     // allow async-await
     'generator-star-spacing': 0,
+    semi: 0,
     // allow debugger during development
     'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0
   }
-}
+};
