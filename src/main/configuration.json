@@ -97,23 +97,23 @@
       }
     }
   },
-  "testType": ["RATE_OF_LOADING", "RATE_OF_DISPLACEMENT", "STATIC_CREEP", "DYNAMIC_CREEP"],
+  "testTypes": ["RATE_OF_LOADING", "RATE_OF_DISPLACEMENT", "STATIC_CREEP", "DYNAMIC_CREEP"],
   "tests": [
     {
+      "id": 1,
       "name": "Dynamic Creep",
       "testType": "DYNAMIC_CREEP",
-      "calculated": {
-        "load": {
+      "calculated": [
+        {
           "unit": "kN",
           "variable": "load",
           "calc": "(((input.diameter.value/2)*(input.diameter.value/2)*Math.PI)/1000)*input.stress.value"
         }
-      },
-      "inputs": {
-        "conditioningCycles": {
+      ],
+      "inputs": [
+        {
           "unit": "integer",
           "default": 30,
-          "value": 30,
           "min": 0,
           "max": 200,
           "label": "Conditioning cycles",
@@ -121,37 +121,34 @@
           "variable": "conditioningCycles",
           "htmlType": "number"
         },
-        "cycles": {
+        {
           "unit": "integer",
           "default": 3600,
-          "value": 3600,
           "min": 0,
           "max": 9999999,
           "label": "Cycles",
           "variable": "cycle",
           "htmlType": "number"
         },
-        "stress": {
+        {
           "unit": "kPa",
           "default": 60,
-          "value": 60,
           "min": 0,
           "max": 200,
           "label": "Stress",
           "variable": "stress",
           "htmlType": "number"
         },
-        "diameter": {
+        {
           "unit": "mm",
           "default": 100,
-          "value": 100,
           "min": 10,
           "max": 500,
           "label": "Diameter",
           "variable": "diameter",
           "htmlType": "number"
         },
-        "frequency": {
+        {
           "unit": "Hz",
           "default": 0.5,
           "min": 0.01,
@@ -160,17 +157,16 @@
           "variable": "frequency",
           "htmlType": "number"
         },
-        "sampleHeight": {
+        {
           "unit": "mm",
           "default": 60,
-          "value": 60,
           "min": 20,
           "max": 300,
           "label": "Sample height",
           "variable": "sampleHeight",
           "htmlType": "number"
         }
-      }
+      ]
     }
   ]
 }

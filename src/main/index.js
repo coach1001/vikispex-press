@@ -204,6 +204,10 @@ function createWindow() {
     });
   });
 
+  ipcMain.on('tests-data', event => {
+    event.sender.send('tests-data-reply', Config.tests);
+  });
+
   parser.on('data', data => {
     clearTimeout(rxTimeout);
     sDataIn = data.split(' ');

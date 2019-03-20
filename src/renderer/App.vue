@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div class="h-100">
     <!-- <b-card class="mt-5">
       {{receivedDataAt}}
       <div>{{data}}</div>
@@ -23,7 +23,7 @@
       <span v-text="outputs.pwm1"></span>
       <input type="checkbox" v-model="outputs.r0" @change="sendData()">
       <input type="checkbox" v-model="outputs.r1" @change="sendData()">
-    </b-card> -->
+    </b-card>-->
     <!-- <b-navbar type="dark" variant="dark">
       <b-row class="w-100">
         <b-col></b-col>
@@ -32,7 +32,7 @@
         </b-col>
       </b-row>
     </b-navbar>-->
-    <div class="container">
+    <div class="container h-100">
       <router-view></router-view>
     </div>
 
@@ -69,18 +69,7 @@ import { ipcRenderer } from 'electron'
 export default {
   name: 'vikispex-press',
   data() {
-    return {
-      receivedDataAt: null,
-      data: null,
-      outputs: {
-        pwm0: 0, // 16bit
-        pwm1: 0, // 16bit
-        r0: 0, // SSR
-        r1: 0, // SSR
-        r2: 0, // RELAY
-        r3: 0 // SSR
-      }
-    }
+    return {}
   },
   methods: {
     exitApplication() {
@@ -108,8 +97,7 @@ export default {
   },
   mounted() {
     ipcRenderer.on('data-get-reply', (event, arg) => {
-      this.data = arg
-      this.receivedDataAt = Date.now()
+      this.$store.commit('SET_UI_DATA', arg)
     })
 
     ipcRenderer.on('connection-lost', (event, args) => {
@@ -119,6 +107,11 @@ export default {
     setInterval(() => {
       ipcRenderer.send('data-get')
     }, 50)
+
+    ipcRenderer.send('tests-data')
+    ipcRenderer.on('tests-data-reply', (event, arg) => {
+      this.$store.commit('SET_UI_TESTS', arg)
+    })
   }
 }
 </script>
