@@ -1,74 +1,12 @@
 <template>
-  <div class="h-100">
-    <!-- {{uiData}} -->
-    <div class="row align-items-center h-100" v-if="uiTest">
+  <div class="h-100" v-if="test">
+    <div class="row align-items-center h-100">
       <div class="text-center display-3 cursor">&lt;</div>
       <div class="col">
         <b-card border-variant="secondary" align="center">
-          <h3>{{uiTest.name}}</h3>
-          <b-card-body>
-            <b-form>
-              <!-- <b-row class="text-right mb-3">
-                <b-col sm="4">
-                  <label class="lg-label" for="sampleNumber">Sample number</label>
-                </b-col>
-                <b-col>
-                  <b-form-input
-                    data-vv-name="sampleNumber"
-                    id="sampleNumber`"
-                    :state="validateState('sampleNumber')"
-                    size="lg"
-                    v-validate="{ required: true }"
-                    type="text"
-                    v-model="form['sampleNumber']"
-                  />
-                </b-col>
-              </b-row>-->
-              <b-row class="text-right mb-3 align-items-center">
-                <b-col sm="4">
-                  <label class="lg-label">Date and time</label>
-                </b-col>
-                <b-col>
-                  <b-form-input
-                    id="date"
-                    data-vv-name="date"
-                    :state="validateState('date')"
-                    size="lg"
-                    v-validate="{ required: true }"
-                    type="date"
-                    v-model="form['date']"
-                  />
-                </b-col>
-                <b-col>
-                  <b-form-input
-                    id="time"
-                    data-vv-name="time"
-                    :state="validateState('time')"
-                    size="lg"
-                    v-validate="{ required: true }"
-                    type="time"
-                    v-model="form['time']"
-                  />
-                </b-col>
-              </b-row>
-
-              <b-row class="text-right mb-3 align-items-center" v-for="input in uiTest.inputs" :key="input.id">
-                <b-col sm="4">
-                  <label class="lg-label" :for="`${input.variable}`">{{`${input.label} ${parseUnit(input.unit)}` }}</label>
-                </b-col>
-                <b-col>
-                  <b-form-input
-                    :id="`${input.variable}`"
-                    :data-vv-name="input.variable"
-                    :state="validateState(input.variable)"
-                    size="lg"
-                    :type="input.htmlType"
-                    v-model="form[input.variable]"
-                  />
-                </b-col>
-              </b-row>
-            </b-form>
-
+          <h3>{{test.name}}</h3>
+          <b-card-body align="left">
+            <form-generator :schema="test.inputs" @input="setFormData" :value="form" :name="test.name"></form-generator>
             <b-row>
               <b-col block>
                 <b-button block variant="outline-secondary" @click="$router.push('main-menu')">Back to Menu</b-button>
@@ -82,10 +20,10 @@
             </b-row>
             <b-row class="mt-3">
               <b-col block>
-                <b-button block variant="outline-secondary">Forward</b-button>
+                <b-button block variant="outline-secondary" @mousedown="forward" @mouseup="neutral" @mouseout="neutral">Forward</b-button>
               </b-col>
               <b-col block>
-                <b-button block variant="outline-secondary">Reverse</b-button>
+                <b-button block variant="outline-secondary" @mousedown="reverse" @mouseup="neutral" @mouseout="neutral">Reverse</b-button>
               </b-col>
             </b-row>
           </b-card-body>
@@ -97,8 +35,14 @@
 </template>
 
 <script>
+import { ipcRenderer } from 'electron'
+import FormGenerator from './DynamicFormComponents/FormGenerator'
+import cloneDeep from 'lodash-es/cloneDeep'
+
 export default {
   name: 'test-select',
+  components: { FormGenerator },
+  inject: ['$validator'],
   data() {
     return {
       form: {},
@@ -106,60 +50,56 @@ export default {
     }
   },
   computed: {
-    uiTest() {
+    test() {
       const test = this.$store.getters.GET_SELECTED_TEST
-      const now = new Date()
-      const time = now
-        .toTimeString()
-        .split(' ')[0]
-        .split(':')
       if (test) {
         test.inputs.forEach(input => {
-          this.defaultValues[input.variable] = input.default
+          if (input.fieldType === 'DatePickerInput') {
+            this.defaultValues[input.name] = new Date()
+          } else {
+            this.defaultValues[input.name] = input.defaultValue
+          }
         })
-        this.form = { ...this.defaultValues }
-        this.form.sampleNumber = 'Default'
-        this.form.date = now.toISOString().split('T')[0]
-        this.form.time = `${time[0]}:${time[1]}`
+        this.form = cloneDeep(this.defaultValues)
       }
       return test
-    },
-    currentValues() {
-      return this.$store.getters.GET_CURRENT_VALUES
-    },
-    uiData() {
-      return this.$store.getters.GET_UI_DATA
     }
   },
   methods: {
+    forward() {
+      ipcRenderer.send('set-state', {
+        state: 'manual-forward'
+      })
+    },
+    reverse() {
+      ipcRenderer.send('set-state', {
+        state: 'manual-reverse'
+      })
+    },
+    neutral() {
+      ipcRenderer.send('set-state', {
+        state: 'idle'
+      })
+    },
+    setFormData(data) {
+      this.form = data
+    },
     exitApplication() {
       this.$root.$emit('bv::show::modal', 'exitApplication')
     },
-    parseUnit(unit) {
-      return unit === 'integer' ? '' : `(${unit})`
-    },
     onReset() {
-      const now = new Date()
-      const time = now
-        .toTimeString()
-        .split(' ')[0]
-        .split(':')
-      this.form = { ...this.defaultValues }
-      this.form.date = now.toISOString().split('T')[0]
-      this.form.time = `${time[0]}:${time[1]}`
+      this.form = cloneDeep(this.defaultValues)
     },
     onSubmit() {
-      console.log(this.form)
-    },
-    validateState(ref) {
-      if (
-        this.$veeFields[ref] &&
-        (this.$veeFields[ref].dirty || this.$veeFields[ref].validated)
-      ) {
-        console.log(this.$veeFields)
-        return !this.errors.has(ref)
+      if (!(this.$validator.errors.items.length > 0) && this.test) {
+        // eslint-disable-next-line no-unused-vars
+        const input = cloneDeep(this.form)
+        this.test.calculated.forEach(calc => {
+          // eslint-disable-next-line no-eval
+          this.form[calc.name] = eval(calc.calc)
+        })
+        console.log(this.form)
       }
-      return null
     }
   }
 }
@@ -168,10 +108,8 @@ export default {
 <style scoped>
 button {
   min-height: 70px;
-  font-size: 1.25rem;
 }
-
-.lg-label {
-  font-size: 1.25rem;
+.cursor {
+  cursor: pointer;
 }
 </style>

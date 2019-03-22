@@ -1,38 +1,7 @@
 <template>
   <div class="h-100">
-    <!-- <b-card class="mt-5">
-      {{receivedDataAt}}
-      <div>{{data}}</div>
-      <input
-        type="range"
-        min="0"
-        max="16000"
-        step="100"
-        v-model="outputs.pwm0"
-        @change="sendData()"
-      >
-      <span v-text="outputs.pwm0"></span>
-      <input
-        type="range"
-        min="0"
-        max="16000"
-        step="100"
-        v-model="outputs.pwm1"
-        @change="sendData()"
-      >
-      <span v-text="outputs.pwm1"></span>
-      <input type="checkbox" v-model="outputs.r0" @change="sendData()">
-      <input type="checkbox" v-model="outputs.r1" @change="sendData()">
-    </b-card>-->
-    <!-- <b-navbar type="dark" variant="dark">
-      <b-row class="w-100">
-        <b-col></b-col>
-        <b-col class="text-right">
-          <b-btn class="round" variant="primary" v-b-modal.exitApplication>&times;</b-btn>
-        </b-col>
-      </b-row>
-    </b-navbar>-->
-    <div class="container h-100">
+    <div class="container w-100 h-100">
+      {{data}}
       <router-view></router-view>
     </div>
 
@@ -66,10 +35,13 @@
 
 <script>
 import { ipcRenderer } from 'electron'
+
 export default {
   name: 'vikispex-press',
   data() {
-    return {}
+    return {
+      data: null
+    }
   },
   methods: {
     exitApplication() {
@@ -97,6 +69,7 @@ export default {
   },
   mounted() {
     ipcRenderer.on('data-get-reply', (event, arg) => {
+      this.data = arg
       this.$store.commit('SET_UI_DATA', arg)
     })
 
@@ -106,7 +79,7 @@ export default {
 
     setInterval(() => {
       ipcRenderer.send('data-get')
-    }, 50)
+    }, 41)
 
     ipcRenderer.send('tests-data')
     ipcRenderer.on('tests-data-reply', (event, arg) => {

@@ -10,7 +10,7 @@
           "type": "input",
           "dataChannel": "adc0",
           "mainChannel": true,
-          "coff": [0.001, 0.01, 0.1, 1],
+          "coff": [0.0000000000000001, 0.00000001, 0.00001, 1],
           "calc": "calc.adc0*calc.adc0*calc.adc0*calc.coff[0]+calc.adc0*calc.adc0*calc.coff[1]+calc.adc0*calc.coff[2]+calc.coff[3]",
           "realMin": -5,
           "realMax": 160,
@@ -49,8 +49,8 @@
         {
           "type": "input",
           "unit": "integer",
-          "dataChannel": "sw0",
-          "calc": "sw0",
+          "dataChannel": "sw1",
+          "calc": "sw1",
           "activatedValue": 1
         }
       ]
@@ -64,37 +64,23 @@
           "mainChannel": true,
           "calc": "if(calc.out+calc.outMin > calc.outMax) {calc.out = calc.outMax} else if(calc.outMin+calc.out < calc.outMin) {calc.out = calc.outMin} else {calc.out = calc.out+calc.outMin}",
           "outMin": 600,
-          "outMax": 16000
+          "outMax": 16000,
+          "manual": 1000
         }
-      ],
-      "manual": {
-        "channelValues": [1000]
-      }
+      ]
     },
     "direction": {
       "channels": [
         {
           "type": "output",
           "unit": "integer",
-          "dataChannel": "r1",
-          "calc": "out"
-        },
-        {
-          "type": "output",
-          "unit": "integer",
-          "dataChannel": "r2",
-          "calc": "out"
+          "dataChannel": "r0",
+          "forward": 1,
+          "reverse": 0,
+          "idle": 0,
+          "motorChannel": 0
         }
-      ],
-      "forward": {
-        "channelValues": [0, 1]
-      },
-      "reverse": {
-        "channelValues": [1, 0]
-      },
-      "neutral": {
-        "channelValues": [0, 0]
-      }
+      ]
     }
   },
   "testTypes": ["RATE_OF_LOADING", "RATE_OF_DISPLACEMENT", "STATIC_CREEP", "DYNAMIC_CREEP"],
@@ -105,66 +91,65 @@
       "testType": "DYNAMIC_CREEP",
       "calculated": [
         {
-          "unit": "kN",
-          "variable": "load",
-          "calc": "(((input.diameter.value/2)*(input.diameter.value/2)*Math.PI)/1000)*input.stress.value"
+          "name": "load",
+          "calc": "(((input.diameter/2)*(input.diameter/2)*Math.PI)/1000)*input.stress"
         }
       ],
       "inputs": [
         {
-          "unit": "integer",
-          "default": 30,
-          "min": 0,
-          "max": 200,
+          "fieldType": "TextInput",
+          "label": "Sample number",
+          "name": "sampleNumber",
+          "validation": "required",
+          "defaultValue": "Default"
+        },
+        {
+          "fieldType": "DatePickerInput",
+          "label": "Date",
+          "name": "date",
+          "validation": "required"
+        },
+        {
+          "fieldType": "NumberInput",
           "label": "Conditioning cycles",
-          "required": true,
-          "variable": "conditioningCycles",
-          "htmlType": "number"
+          "name": "conditioningCycles",
+          "validation": "required|min_value:1|numeric|max_value:200",
+          "defaultValue": 30
         },
         {
-          "unit": "integer",
-          "default": 3600,
-          "min": 0,
-          "max": 9999999,
+          "fieldType": "NumberInput",
           "label": "Cycles",
-          "variable": "cycle",
-          "htmlType": "number"
+          "name": "cycles",
+          "validation": "required|min_value:1|numeric|max_value:999999",
+          "defaultValue": 3600
         },
         {
-          "unit": "kPa",
-          "default": 60,
-          "min": 0,
-          "max": 200,
-          "label": "Stress",
-          "variable": "stress",
-          "htmlType": "number"
+          "fieldType": "NumberInput",
+          "label": "Stress (kPa)",
+          "name": "stress",
+          "validation": "required|min_value:1|decimal:1|max_value:200",
+          "defaultValue": 60
         },
         {
-          "unit": "mm",
-          "default": 100,
-          "min": 10,
-          "max": 500,
-          "label": "Diameter",
-          "variable": "diameter",
-          "htmlType": "number"
+          "fieldType": "NumberInput",
+          "label": "Diameter (mm)",
+          "name": "diameter",
+          "validation": "required|min_value:10|decimal:1|max_value:500",
+          "defaultValue": 60
         },
         {
-          "unit": "Hz",
-          "default": 0.5,
-          "min": 0.01,
-          "max": 4,
-          "label": "Frequency",
-          "variable": "frequency",
-          "htmlType": "number"
+          "fieldType": "NumberInput",
+          "label": "Frequency (Hz)",
+          "name": "frequency",
+          "validation": "required|min_value:0.01|decimal:2|max_value:4",
+          "defaultValue": 0.5
         },
         {
-          "unit": "mm",
-          "default": 60,
-          "min": 20,
-          "max": 300,
-          "label": "Sample height",
-          "variable": "sampleHeight",
-          "htmlType": "number"
+          "fieldType": "NumberInput",
+          "label": "Sample height (mm)",
+          "name": "sampleHeight",
+          "validation": "required|min_value:20|decimal:1|max_value:300",
+          "defaultValue": 60
         }
       ]
     }

@@ -41,6 +41,5 @@ export default {
 <style scoped>
 button {
   min-height: 70px;
-  font-size: 1.25rem;
 }
 </style>
