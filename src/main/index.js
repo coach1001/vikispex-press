@@ -1,20 +1,18 @@
 'use strict';
-
 import { app, BrowserWindow, ipcMain } from 'electron';
-import CircularBuffer from 'circular-buffer';
 import fs from 'fs';
+
+const math = require('mathjs');
 const crc16 = require('js-crc').crc16;
 const SerialPort = require('serialport');
 const Readline = require('@serialport/parser-readline');
 var Stopwatch = require('statman-stopwatch');
-
 // 9600, 14400, 19200, 38400, 57600, 115200
+
 let port;
-// let parser;
+let parser;
 let configuration;
-
 let testStopwatch;
-
 let load = [];
 let displacement = [];
 let limits = [];
@@ -35,11 +33,16 @@ let dataIn = {
   sw0: 0, // 0 or 1
   sw1: 0 // 0 or 1
 };
+
+let directionChannels;
+let motorChannels;
 let rxTimeout;
 let sDataIn;
 let state = {
-  state: 'idle'
+  state: 'manual',
+  subState: 0
 };
+
 /**
  * Set `__static` path to static files in production
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
@@ -58,57 +61,41 @@ function openPort() {
   });
 }
 
+function approxRollingAverage(oldAverage, newSample, samples) {
+  if (!oldAverage) oldAverage = 0;
+  return (oldAverage * (samples - 1)) / samples + newSample / samples;
+}
+
 function readConfiguration() {
   const configurationRaw = fs.readFileSync('./configuration.json');
   configuration = JSON.parse(configurationRaw);
-
   port = new SerialPort(configuration.machineSettings.commPort, { baudRate: configuration.machineSettings.baudRate, autoOpen: false });
-
-  // parser = port.pipe(new Readline({ delimiter: '\n' }));
-
-  // parser.on('data', data => {
-  //   clearTimeout(rxTimeout);
-  //   sDataIn = data.split(' ');
-  //   if (checkCrc()) {
-  //     dataIn.adc0 = parseInt(sDataIn[0], 16);
-  //     dataIn.adc1 = parseInt(sDataIn[1], 16);
-  //     dataIn.adc2 = parseInt(sDataIn[2], 16);
-  //     dataIn.adc3 = parseInt(sDataIn[3], 16);
-  //     dataIn.sw0 = parseInt(sDataIn[4], 16);
-  //     dataIn.sw1 = parseInt(sDataIn[5], 16);
-  //   }
-  //   sendData();
-  //   parseData();
-  //   processState();
-  // });
-
-  configuration.machineSettings.load.channels.forEach(channel => {
-    let loadChannel = {
-      buffer: new CircularBuffer(channel.samples),
-      realValue: null,
-      samples: channel.samples
-    };
-    load.push(loadChannel);
+  parser = port.pipe(new Readline({ delimiter: '\n' }));
+  parser.on('data', data => {
+    clearTimeout(rxTimeout);
+    sDataIn = data.split(' ');
+    dataIn.adc0 = parseInt(sDataIn[0], 16);
+    dataIn.adc1 = parseInt(sDataIn[1], 16);
+    dataIn.adc2 = parseInt(sDataIn[2], 16);
+    dataIn.adc3 = parseInt(sDataIn[3], 16);
+    dataIn.sw0 = parseInt(sDataIn[4], 16);
+    dataIn.sw1 = parseInt(sDataIn[5], 16);
+    parseData();
+    processState();
+    sendData();
   });
-
-  configuration.machineSettings.displacement.channels.forEach(channel => {
-    let displacementChannel = {
-      buffer: new CircularBuffer(channel.samples),
-      realValue: null,
-      samples: channel.samples
-    };
-    displacement.push(displacementChannel);
+  configuration.machineSettings.load.channels.forEach(() => {
+    load.push({ rawZero: 0 });
   });
-
+  configuration.machineSettings.displacement.channels.forEach(() => {
+    displacement.push({ rawZero: 0 });
+  });
   configuration.machineSettings.limits.channels.forEach(() => {
-    let limitChannel = {
-      active: null
-    };
-    limits.push(limitChannel);
+    limits.push({});
   });
-
+  directionChannels = configuration.machineSettings.direction.channels;
+  motorChannels = configuration.machineSettings.motor.channels;
   testStopwatch = new Stopwatch();
-
   testStopwatch.start();
   openPort();
 }
@@ -132,44 +119,13 @@ function sendData() {
   port.write(`$${sOutDelimited}`);
   rxTimeout = setTimeout(() => {
     sendData();
-  }, 40);
-}
-
-function checkCrc() {
-  let crcString = '';
-  for (let i = 0; i < sDataIn.length; i++) {
-    if (i !== sDataIn.length - 1) {
-      crcString += sDataIn[i];
-    }
-  }
-  if (crc16(crcString) === sDataIn[sDataIn.length - 1]) {
-    return true;
-  }
-  return false;
+  }, 50);
 }
 
 function processState() {
-  console.log((testStopwatch.read() / 1000).toFixed(3));
-  const directionChannels = configuration.machineSettings.direction.channels;
-  const motorChannels = configuration.machineSettings.motor.channels;
   switch (state.state) {
-    case 'manual-forward':
-      directionChannels.forEach(channel => {
-        dataOut[channel.dataChannel] = channel.forward;
-        dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
-      });
-      break;
-    case 'manual-reverse':
-      directionChannels.forEach(channel => {
-        dataOut[channel.dataChannel] = channel.reverse;
-        dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
-      });
-      break;
-    case 'idle':
-      directionChannels.forEach(channel => {
-        dataOut[channel.dataChannel] = channel.idle;
-        dataOut[motorChannels[channel.motorChannel].dataChannel] = 0;
-      });
+    case 'manual':
+      manual();
       break;
     default:
       break;
@@ -181,40 +137,73 @@ const winURL = process.env.NODE_ENV === 'development' ? `http://localhost:9080` 
 
 function parseData() {
   configuration.machineSettings.load.channels.forEach((channel, idx) => {
-    let calc = { ...channel };
-    let calcValue;
-    calc.coff = channel.coff;
-    calc[channel.dataChannel] = dataIn[channel.dataChannel];
-    // eslint-disable-next-line no-eval
-    calcValue = eval(channel.calc);
-    load[idx].buffer.enq(calcValue);
-    load[idx].realValue = load[idx].buffer
-      .toarray()
-      .map((c, i, arr) => c / arr.length)
-      .reduce((p, c) => c + p);
-    load[idx].mainChannel = channel.mainChannel;
-    load[idx].realValue = load[idx].realValue.toFixed(channel.realValuePrecision);
-    load[idx].displayValue = `${load[idx].realValue} ${channel.unit}`;
+    load[idx].rawValue = approxRollingAverage(load[idx].rawValue, dataIn[channel.dataChannel], channel.samples);
+    load[idx].rawZerod = load[idx].rawValue - load[idx].rawZero;
+    load[idx].realValue = math
+      .eval(channel.calc, {
+        value: load[idx].rawValue,
+        coffA: channel.coffA,
+        coffB: channel.coffB,
+        coffC: channel.coffC,
+        coffD: channel.coffD
+      })
+      .toFixed(channel.realValuePrecision);
+    load[idx].realZerod = math
+      .eval(channel.calc, {
+        value: load[idx].rawZerod,
+        coffA: channel.coffA,
+        coffB: channel.coffB,
+        coffC: channel.coffC,
+        coffD: channel.coffD
+      })
+      .toFixed(channel.realValuePrecision);
   });
   configuration.machineSettings.displacement.channels.forEach((channel, idx) => {
-    let calc = { ...channel };
-    let calcValue;
-    calc.coff = channel.coff;
-    calc[channel.dataChannel] = dataIn[channel.dataChannel];
-    // eslint-disable-next-line no-eval
-    calcValue = eval(channel.calc);
-    displacement[idx].buffer.enq(calcValue);
-    displacement[idx].realValue = displacement[idx].buffer
-      .toarray()
-      .map((c, i, arr) => c / arr.length)
-      .reduce((p, c) => c + p);
-    displacement[idx].mainChannel = channel.mainChannel;
-    displacement[idx].realValue = displacement[idx].realValue.toFixed(channel.realValuePrecision);
-    displacement[idx].displayValue = `${displacement[idx].realValue} ${channel.unit}`;
+    displacement[idx].rawValue = approxRollingAverage(displacement[idx].rawValue, dataIn[channel.dataChannel], channel.samples);
+    displacement[idx].rawZerod = displacement[idx].rawValue - load[idx].rawZero;
+    displacement[idx].realValue = math
+      .eval(channel.calc, {
+        value: displacement[idx].rawValue,
+        dataMin: channel.dataMin,
+        dataMax: channel.dataMax,
+        length: channel.length
+      })
+      .toFixed(channel.realValuePrecision);
+    displacement[idx].realZerod = math
+      .eval(channel.calc, {
+        value: displacement[idx].rawZerod,
+        dataMin: channel.dataMin,
+        dataMax: channel.dataMax,
+        length: channel.length
+      })
+      .toFixed(channel.realValuePrecision);
   });
   configuration.machineSettings.limits.channels.forEach((channel, idx) => {
     limits[idx].active = dataIn[channel.dataChannel] === channel.active;
   });
+}
+
+function createUiData() {
+  let uiLoad = [];
+  let uiDisplacement = [];
+  load.forEach(l => {
+    uiLoad.push({
+      realValue: l.realValue,
+      realZerod: l.realZerod
+    });
+  });
+  displacement.forEach(d => {
+    uiDisplacement.push({
+      realValue: d.realValue,
+      realZerod: d.realZerod
+    });
+  });
+  return {
+    uiLoad,
+    uiDisplacement,
+    uiLimits: limits,
+    uiState: state
+  };
 }
 
 function createWindow() {
@@ -239,27 +228,7 @@ function createWindow() {
   });
 
   ipcMain.on('data-get', (event, arg) => {
-    let uiData = {
-      load: [],
-      displacement: [],
-      limits: []
-    };
-    load.forEach(val => {
-      uiData.load.push({
-        displayValue: val.displayValue,
-        mainChannel: val.mainChannel
-      });
-    });
-    displacement.forEach(val => {
-      uiData.displacement.push({
-        displayValue: val.displayValue,
-        mainChannel: val.mainChannel
-      });
-    });
-    limits.forEach(val => {
-      uiData.limits.push(val);
-    });
-    event.sender.send('data-get-reply', uiData);
+    event.sender.send('data-get-reply', createUiData());
   });
 
   ipcMain.on('data-set', (event, arg) => {
@@ -309,6 +278,49 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+// ******************************* MACHINE FUNCTIONS ********************************************************* //
+function idle() {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.idle;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = 0;
+  });
+}
+
+function manualAdvance() {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.forward;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
+  });
+}
+
+function manualReverse() {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.reverse;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
+  });
+}
+// ******************************* MACHINE FUNCTIONS END ***************************************************** //
+
+// ******************************* STATE FUNCTIONS *********************************************************** //
+function manual() {
+  switch (state.subState) {
+    // IDLE
+    case 0:
+      idle();
+      break;
+    // MANUAL ADVANCE
+    case 1:
+      manualAdvance();
+      break;
+    // MANUAL REVERSE
+    case 2:
+      manualReverse();
+      break;
+  }
+}
+
+// ******************************* STATE FUNCTIONS END ******************************************************* //
 
 /**
  * Auto Updater

@@ -79,7 +79,7 @@ export default {
 
     setInterval(() => {
       ipcRenderer.send('data-get')
-    }, 41)
+    }, 20)
 
     ipcRenderer.send('tests-data')
     ipcRenderer.on('tests-data-reply', (event, arg) => {

@@ -10,11 +10,14 @@
           "type": "input",
           "dataChannel": "adc0",
           "mainChannel": true,
-          "coff": [0.0000000000000001, 0.00000001, 0.00001, 1],
-          "calc": "calc.adc0*calc.adc0*calc.adc0*calc.coff[0]+calc.adc0*calc.adc0*calc.coff[1]+calc.adc0*calc.coff[2]+calc.coff[3]",
+          "coffA": 0.0000000000000001,
+          "coffB": 0.00000001,
+          "coffC": 0.00001,
+          "coffD": 1,
+          "calc": "value*value*value*coffA+value*value*coffB+value*coffC+coffD",
           "realMin": -5,
           "realMax": 160,
-          "samples": 8,
+          "samples": 1,
           "realValuePrecision": 2
         }
       ]
@@ -25,11 +28,11 @@
           "type": "input",
           "unit": "mm",
           "dataChannel": "adc2",
-          "dataMin": 5,
+          "dataMin": 0,
           "dataMax": 1023,
           "mainChannel": true,
           "length": 50,
-          "calc": "(calc.adc2/(calc.dataMax-calc.dataMin))*calc.length",
+          "calc": "(value/(dataMax-dataMin))*length",
           "realMin": 5,
           "realMax": 45,
           "samples": 8,
@@ -62,7 +65,6 @@
           "unit": "integer",
           "dataChannel": "pwm0",
           "mainChannel": true,
-          "calc": "if(calc.out+calc.outMin > calc.outMax) {calc.out = calc.outMax} else if(calc.outMin+calc.out < calc.outMin) {calc.out = calc.outMin} else {calc.out = calc.out+calc.outMin}",
           "outMin": 600,
           "outMax": 16000,
           "manual": 1000
@@ -92,7 +94,8 @@
       "calculated": [
         {
           "name": "load",
-          "calc": "(((input.diameter/2)*(input.diameter/2)*Math.PI)/1000)*input.stress"
+          "calc": "(((diameter/2)*(diameter/2)*pi)/1000)*stress",
+          "precision": 2
         }
       ],
       "inputs": [
@@ -128,14 +131,14 @@
           "label": "Stress (kPa)",
           "name": "stress",
           "validation": "required|min_value:1|decimal:1|max_value:200",
-          "defaultValue": 60
+          "defaultValue": 20
         },
         {
           "fieldType": "NumberInput",
           "label": "Diameter (mm)",
           "name": "diameter",
           "validation": "required|min_value:10|decimal:1|max_value:500",
-          "defaultValue": 60
+          "defaultValue": 40
         },
         {
           "fieldType": "NumberInput",

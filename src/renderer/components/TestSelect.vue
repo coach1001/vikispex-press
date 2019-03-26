@@ -20,10 +20,10 @@
             </b-row>
             <b-row class="mt-3">
               <b-col block>
-                <b-button block variant="outline-secondary" @mousedown="forward" @mouseup="neutral" @mouseout="neutral">Forward</b-button>
+                <b-button block variant="outline-secondary" @mousedown="advance" @mouseup="idle" @mouseout="idle">Advance</b-button>
               </b-col>
               <b-col block>
-                <b-button block variant="outline-secondary" @mousedown="reverse" @mouseup="neutral" @mouseout="neutral">Reverse</b-button>
+                <b-button block variant="outline-secondary" @mousedown="reverse" @mouseup="idle" @mouseout="idle">Reverse</b-button>
               </b-col>
             </b-row>
           </b-card-body>
@@ -38,6 +38,7 @@
 import { ipcRenderer } from 'electron'
 import FormGenerator from './DynamicFormComponents/FormGenerator'
 import cloneDeep from 'lodash-es/cloneDeep'
+import * as math from 'mathjs'
 
 export default {
   name: 'test-select',
@@ -66,19 +67,22 @@ export default {
     }
   },
   methods: {
-    forward() {
+    advance() {
       ipcRenderer.send('set-state', {
-        state: 'manual-forward'
+        state: 'manual',
+        subState: 1
       })
     },
     reverse() {
       ipcRenderer.send('set-state', {
-        state: 'manual-reverse'
+        state: 'manual',
+        subState: 2
       })
     },
-    neutral() {
+    idle() {
       ipcRenderer.send('set-state', {
-        state: 'idle'
+        state: 'manual',
+        subState: 0
       })
     },
     setFormData(data) {
@@ -92,11 +96,10 @@ export default {
     },
     onSubmit() {
       if (!(this.$validator.errors.items.length > 0) && this.test) {
-        // eslint-disable-next-line no-unused-vars
-        const input = cloneDeep(this.form)
         this.test.calculated.forEach(calc => {
-          // eslint-disable-next-line no-eval
-          this.form[calc.name] = eval(calc.calc)
+          this.form[calc.name] = Number(
+            math.eval(calc.calc, this.form).toFixed(calc.precision)
+          )
         })
         console.log(this.form)
       }
