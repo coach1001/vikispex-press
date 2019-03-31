@@ -2,14 +2,14 @@
   "machineSettings": {
     "type": "Dynamic Creep",
     "commPort": "COM7",
-    "baudRate": 38400,
+    "baudRate": 57600,
     "load": {
       "channels": [
         {
           "unit": "kN",
           "type": "input",
           "dataChannel": "adc0",
-          "mainChannel": true,
+          "primary": true,
           "coffA": 0.0000000000000001,
           "coffB": 0.00000001,
           "coffC": 0.00001,
@@ -30,7 +30,7 @@
           "dataChannel": "adc2",
           "dataMin": 0,
           "dataMax": 1023,
-          "mainChannel": true,
+          "primary": true,
           "length": 50,
           "calc": "(value/(dataMax-dataMin))*length",
           "realMin": 5,
@@ -40,20 +40,18 @@
         }
       ]
     },
-    "limits": {
+    "limit": {
       "channels": [
         {
           "type": "input",
           "unit": "integer",
           "dataChannel": "sw0",
-          "calc": "sw0",
           "activatedValue": 1
         },
         {
           "type": "input",
           "unit": "integer",
           "dataChannel": "sw1",
-          "calc": "sw1",
           "activatedValue": 1
         }
       ]
@@ -91,6 +89,16 @@
       "id": 1,
       "name": "Dynamic Creep",
       "testType": "DYNAMIC_CREEP",
+      "constants": [
+        {
+          "name": "advanceSpeed",
+          "value": 1000
+        },
+        {
+          "name": "loadDetectRealValue",
+          "value": 0.25
+        }
+      ],
       "calculated": [
         {
           "name": "load",

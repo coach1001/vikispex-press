@@ -15,7 +15,7 @@ let configuration;
 let testStopwatch;
 let load = [];
 let displacement = [];
-let limits = [];
+let limit = [];
 
 let dataOut = {
   pwm0: 0, // 16bit
@@ -90,11 +90,12 @@ function readConfiguration() {
   configuration.machineSettings.displacement.channels.forEach(() => {
     displacement.push({ rawZero: 0 });
   });
-  configuration.machineSettings.limits.channels.forEach(() => {
-    limits.push({});
+  configuration.machineSettings.limit.channels.forEach(() => {
+    limit.push({});
   });
   directionChannels = configuration.machineSettings.direction.channels;
   motorChannels = configuration.machineSettings.motor.channels;
+
   testStopwatch = new Stopwatch();
   testStopwatch.start();
   openPort();
@@ -119,13 +120,16 @@ function sendData() {
   port.write(`$${sOutDelimited}`);
   rxTimeout = setTimeout(() => {
     sendData();
-  }, 50);
+  }, 20);
 }
 
 function processState() {
   switch (state.state) {
     case 'manual':
       manual();
+      break;
+    case 'dynamicCreep':
+      dynamicCreep();
       break;
     default:
       break;
@@ -178,8 +182,8 @@ function parseData() {
       })
       .toFixed(channel.realValuePrecision);
   });
-  configuration.machineSettings.limits.channels.forEach((channel, idx) => {
-    limits[idx].active = dataIn[channel.dataChannel] === channel.active;
+  configuration.machineSettings.limit.channels.forEach((channel, idx) => {
+    limit[idx].active = dataIn[channel.dataChannel] === channel.active;
   });
 }
 
@@ -201,7 +205,7 @@ function createUiData() {
   return {
     uiLoad,
     uiDisplacement,
-    uiLimits: limits,
+    uiLimit: limit,
     uiState: state
   };
 }
@@ -278,6 +282,27 @@ app.on('activate', () => {
     createWindow();
   }
 });
+// ******************************* DATA FUNCTIONS ************************************************************ //
+function getPrimaryLoad() {
+  let primaryLoad;
+  load.forEach(l => {
+    if (l.primary) primaryLoad = l.realZerod;
+  });
+  return primaryLoad;
+}
+
+function zeroLoad() {
+  load.forEach((l, idx) => {
+    load[idx].rawZero = load[idx].rawValue;
+  });
+}
+
+function zeroDisplacement() {
+  displacement.forEach((l, idx) => {
+    displacement[idx].rawZero = displacement[idx].rawValue;
+  });
+}
+// ******************************* DATA FUNCTIONS ************************************************************ //
 
 // ******************************* MACHINE FUNCTIONS ********************************************************* //
 function idle() {
@@ -300,6 +325,13 @@ function manualReverse() {
     dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
   });
 }
+
+function testAdvance() {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.forward;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = 1000; // testData.advanceSpeed;
+  });
+}
 // ******************************* MACHINE FUNCTIONS END ***************************************************** //
 
 // ******************************* STATE FUNCTIONS *********************************************************** //
@@ -316,6 +348,117 @@ function manual() {
     // MANUAL REVERSE
     case 2:
       manualReverse();
+      break;
+  }
+}
+
+function dynamicCreep() {
+  switch (state.subState) {
+    case 0:
+      zeroLoad();
+      state.subState = 1;
+      break;
+    case 1:
+      testAdvance();
+      state.subState = 2;
+      break;
+    case 2:
+      if (getPrimaryLoad() > 0.5) state.subState = 3;
+      break;
+    case 3:
+      zeroDisplacement();
+      state.subState = 4;
+      break;
+    // case 4:
+    //   uiStateChange();
+    //   state.subState = 5;
+    //   break;
+    // case 5:
+    //   cyclesCounter = 0;
+    //   startOfApplyLoadCycle = cycleTime / 2;
+    //   cyclesTimer.start();
+    //   state.subState = 6;
+    //   break;
+    // case 6:
+    //   applyLoad();
+    //   state.subState = 7;
+    //   break;
+    // case 7:
+    //   if (cyclesTimer.read() / 1000 > startOfApplyLoadCycle) {
+    //     startOfRemoveLoadCycle = startOfApplyLoadCycle + cycleTime / 2;
+    //     state.subState = 8;
+    //   }
+    //   if (currentLoad > cycleLoad) {
+    //     lockValves();
+    //   }
+    //   break;
+    // case 8:
+    //   removeLoad();
+    //   state.subState = 9;
+    //   break;
+    // case 9:
+    //   if (cyclesTimer.read() / 1000 > startOfRemoveLoadCycle) {
+    //     cyclesCounter += 0;
+    //     state.subState = 10;
+    //   }
+    //   break;
+    // case 10:
+    //   if (cyclesCounter > condCycles) {
+    //     cyclesTimer.reset();
+    //     state.subState = 11;
+    //   } else {
+    //     startOfCurrentLoadCycle = startOfRemoveLoadCycle + cycleTime / 2;
+    //     state.subState = 6;
+    //   }
+    //   break;
+    // case 11:
+    //   cycleCounter = 0;
+    //   startOfApplyLoadCycle = cycleTime / 2;
+    //   cyclesTimer.start();
+    //   state.subState = 12;
+    //   break;
+    // case 12:
+    //   applyLoad();
+    //   state.subState = 13;
+    //   break;
+    // case 13:
+    //   if (cyclesTimer.read() / 1000 > startOfApplyLoadCycle) {
+    //     startOfRemoveLoadCycle = startOfApplyLoadCycle + cycleTime / 2;
+    //     state.subState = 14;
+    //   }
+    //   if (currentLoad > cycleLoad) {
+    //     lockValves();
+    //   }
+    //   break;
+    // case 14:
+    //   writeTestData();
+    // case 15:
+    //   removeLoad();
+    //   state.subState = 16;
+    //   break;
+    // case 16:
+    //   if (cyclesTimer.read() / 1000 > startOfRemoveLoadCycle) {
+    //     cyclesCounter += 0;
+    //     state.subState = 10;
+    //   }
+    //   break;
+    // case 17:
+    //   writeTestData();
+    // case 18:
+    //   if (cyclesCounter > cycles) {
+    //     cyclesTimer.reset();
+    //     state.subState = 19;
+    //   } else {
+    //     startOfCurrentLoadCycle = startOfRemoveLoadCycle + cycleTime / 2;
+    //     state.subState = 12;
+    //   }
+    //   break;
+    // case 19:
+    //   state = {
+    //     state: 'manual',
+    //     subState: 0
+    //   };
+    default:
       break;
   }
 }

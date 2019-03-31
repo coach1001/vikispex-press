@@ -61,12 +61,21 @@ export default {
             this.defaultValues[input.name] = input.defaultValue
           }
         })
+        test.constants.forEach(constant => {
+          this.defaultValues[constant.name] = constant.value
+        })
         this.form = cloneDeep(this.defaultValues)
       }
       return test
     }
   },
   methods: {
+    idle() {
+      ipcRenderer.send('set-state', {
+        state: 'manual',
+        subState: 0
+      })
+    },
     advance() {
       ipcRenderer.send('set-state', {
         state: 'manual',
@@ -77,12 +86,6 @@ export default {
       ipcRenderer.send('set-state', {
         state: 'manual',
         subState: 2
-      })
-    },
-    idle() {
-      ipcRenderer.send('set-state', {
-        state: 'manual',
-        subState: 0
       })
     },
     setFormData(data) {
@@ -101,7 +104,6 @@ export default {
             math.eval(calc.calc, this.form).toFixed(calc.precision)
           )
         })
-        console.log(this.form)
       }
     }
   }
