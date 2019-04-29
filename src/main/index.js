@@ -7,15 +7,18 @@ const crc16 = require('js-crc').crc16;
 const SerialPort = require('serialport');
 const Readline = require('@serialport/parser-readline');
 var Stopwatch = require('statman-stopwatch');
-// 9600, 14400, 19200, 38400, 57600, 115200
 
 let port;
 let parser;
 let configuration;
-let testStopwatch;
 let load = [];
 let displacement = [];
 let limit = [];
+
+let cycleTimer;
+let cycleCounter;
+let endOfApplyLoadCycle;
+let endOfRemoveLoadCycle;
 
 let dataOut = {
   pwm0: 0, // 16bit
@@ -36,6 +39,11 @@ let dataIn = {
 
 let directionChannels;
 let motorChannels;
+let loadChannels;
+let displacementChannels;
+let limitChannels;
+let testData;
+
 let rxTimeout;
 let sDataIn;
 let state = {
@@ -69,6 +77,13 @@ function approxRollingAverage(oldAverage, newSample, samples) {
 function readConfiguration() {
   const configurationRaw = fs.readFileSync('./configuration.json');
   configuration = JSON.parse(configurationRaw);
+
+  directionChannels = configuration.machineSettings.direction.channels;
+  motorChannels = configuration.machineSettings.motor.channels;
+  loadChannels = configuration.machineSettings.load.channels;
+  displacementChannels = configuration.machineSettings.displacement.channels;
+  limitChannels = configuration.machineSettings.limit.channels;
+
   port = new SerialPort(configuration.machineSettings.commPort, { baudRate: configuration.machineSettings.baudRate, autoOpen: false });
   parser = port.pipe(new Readline({ delimiter: '\n' }));
   parser.on('data', data => {
@@ -84,20 +99,16 @@ function readConfiguration() {
     processState();
     sendData();
   });
-  configuration.machineSettings.load.channels.forEach(() => {
+  loadChannels.forEach(() => {
     load.push({ rawZero: 0 });
   });
-  configuration.machineSettings.displacement.channels.forEach(() => {
+  displacementChannels.forEach(() => {
     displacement.push({ rawZero: 0 });
   });
-  configuration.machineSettings.limit.channels.forEach(() => {
+  limitChannels.forEach(() => {
     limit.push({});
   });
-  directionChannels = configuration.machineSettings.direction.channels;
-  motorChannels = configuration.machineSettings.motor.channels;
-
-  testStopwatch = new Stopwatch();
-  testStopwatch.start();
+  cycleTimer = new Stopwatch();
   openPort();
 }
 
@@ -118,6 +129,7 @@ function sendData() {
     `${dataOut.r3.toString(16)}`;
   sOutDelimited += `${crc16(sOutNonDelimited)}\n`;
   port.write(`$${sOutDelimited}`);
+
   rxTimeout = setTimeout(() => {
     sendData();
   }, 20);
@@ -128,7 +140,7 @@ function processState() {
     case 'manual':
       manual();
       break;
-    case 'dynamicCreep':
+    case 'dynamic-creep':
       dynamicCreep();
       break;
     default:
@@ -140,7 +152,7 @@ let mainWindow;
 const winURL = process.env.NODE_ENV === 'development' ? `http://localhost:9080` : `file://${__dirname}/index.html`;
 
 function parseData() {
-  configuration.machineSettings.load.channels.forEach((channel, idx) => {
+  loadChannels.forEach((channel, idx) => {
     load[idx].rawValue = approxRollingAverage(load[idx].rawValue, dataIn[channel.dataChannel], channel.samples);
     load[idx].rawZerod = load[idx].rawValue - load[idx].rawZero;
     load[idx].realValue = math
@@ -161,10 +173,11 @@ function parseData() {
         coffD: channel.coffD
       })
       .toFixed(channel.realValuePrecision);
+    load[idx].primary = channel.primary;
   });
-  configuration.machineSettings.displacement.channels.forEach((channel, idx) => {
+  displacementChannels.forEach((channel, idx) => {
     displacement[idx].rawValue = approxRollingAverage(displacement[idx].rawValue, dataIn[channel.dataChannel], channel.samples);
-    displacement[idx].rawZerod = displacement[idx].rawValue - load[idx].rawZero;
+    displacement[idx].rawZerod = displacement[idx].rawValue - displacement[idx].rawZero;
     displacement[idx].realValue = math
       .eval(channel.calc, {
         value: displacement[idx].rawValue,
@@ -181,8 +194,9 @@ function parseData() {
         length: channel.length
       })
       .toFixed(channel.realValuePrecision);
+    displacement[idx].primary = displacement.primary;
   });
-  configuration.machineSettings.limit.channels.forEach((channel, idx) => {
+  limitChannels.forEach((channel, idx) => {
     limit[idx].active = dataIn[channel.dataChannel] === channel.active;
   });
 }
@@ -282,6 +296,7 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
 // ******************************* DATA FUNCTIONS ************************************************************ //
 function getPrimaryLoad() {
   let primaryLoad;
@@ -302,36 +317,58 @@ function zeroDisplacement() {
     displacement[idx].rawZero = displacement[idx].rawValue;
   });
 }
+
 // ******************************* DATA FUNCTIONS ************************************************************ //
 
 // ******************************* MACHINE FUNCTIONS ********************************************************* //
 function idle() {
   directionChannels.forEach(channel => {
-    dataOut[channel.dataChannel] = channel.idle;
+    dataOut[channel.dataChannel] = channel.idleValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = 0;
   });
 }
 
 function manualAdvance() {
   directionChannels.forEach(channel => {
-    dataOut[channel.dataChannel] = channel.forward;
+    dataOut[channel.dataChannel] = channel.advanceValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
   });
 }
 
 function manualReverse() {
   directionChannels.forEach(channel => {
-    dataOut[channel.dataChannel] = channel.reverse;
+    dataOut[channel.dataChannel] = channel.reverseValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
   });
 }
 
 function testAdvance() {
   directionChannels.forEach(channel => {
-    dataOut[channel.dataChannel] = channel.forward;
-    dataOut[motorChannels[channel.motorChannel].dataChannel] = 1000; // testData.advanceSpeed;
+    dataOut[channel.dataChannel] = channel.advanceValue;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = testData.advanceSpeed;
   });
 }
+
+function idleValves() {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.idleValue;
+  });
+}
+
+function applyLoad() {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.advanceValue;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = testData.motorLoadSpeed;
+  });
+}
+
+function removeLoad() {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.reverseValue;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = 0;
+  });
+}
+
 // ******************************* MACHINE FUNCTIONS END ***************************************************** //
 
 // ******************************* STATE FUNCTIONS *********************************************************** //
@@ -363,88 +400,84 @@ function dynamicCreep() {
       state.subState = 2;
       break;
     case 2:
-      if (getPrimaryLoad() > 0.5) state.subState = 3;
+      if (getPrimaryLoad() > testData.loadDetectRealValue) state.subState = 3;
       break;
     case 3:
       zeroDisplacement();
       state.subState = 4;
       break;
-    // case 4:
-    //   uiStateChange();
-    //   state.subState = 5;
-    //   break;
-    // case 5:
-    //   cyclesCounter = 0;
-    //   startOfApplyLoadCycle = cycleTime / 2;
-    //   cyclesTimer.start();
-    //   state.subState = 6;
-    //   break;
-    // case 6:
-    //   applyLoad();
-    //   state.subState = 7;
-    //   break;
-    // case 7:
-    //   if (cyclesTimer.read() / 1000 > startOfApplyLoadCycle) {
-    //     startOfRemoveLoadCycle = startOfApplyLoadCycle + cycleTime / 2;
-    //     state.subState = 8;
-    //   }
-    //   if (currentLoad > cycleLoad) {
-    //     lockValves();
-    //   }
-    //   break;
-    // case 8:
-    //   removeLoad();
-    //   state.subState = 9;
-    //   break;
-    // case 9:
-    //   if (cyclesTimer.read() / 1000 > startOfRemoveLoadCycle) {
-    //     cyclesCounter += 0;
-    //     state.subState = 10;
-    //   }
-    //   break;
+    case 4:
+      cycleCounter = 0;
+      endOfApplyLoadCycle = testData.cycleTime / 2;
+      cycleTimer.start();
+      state.subState = 5;
+      break;
+    case 5:
+      applyLoad();
+      state.subState = 6;
+      break;
+    case 6:
+      if (cycleTimer.read() / 1000 > endOfApplyLoadCycle) {
+        endOfRemoveLoadCycle = endOfApplyLoadCycle + testData.cycleTime / 2;
+        state.subState = 7;
+      }
+      if (getPrimaryLoad() > testData.load) {
+        idleValves();
+      }
+      break;
+    case 7:
+      removeLoad();
+      state.subState = 8;
+      break;
+    case 8:
+      if (cycleTimer.read() / 1000 > endOfRemoveLoadCycle) {
+        cycleCounter += 1;
+        state.subState = 9;
+      }
+      break;
+    case 9:
+      if (cycleCounter > testData.conditioningCycles) {
+        cycleTimer.reset();
+        state.subState = 10;
+      } else {
+        endOfApplyLoadCycle = endOfRemoveLoadCycle + testData.cycleTime / 2;
+        state.subState = 5;
+      }
+      break;
     // case 10:
-    //   if (cyclesCounter > condCycles) {
-    //     cyclesTimer.reset();
-    //     state.subState = 11;
-    //   } else {
-    //     startOfCurrentLoadCycle = startOfRemoveLoadCycle + cycleTime / 2;
-    //     state.subState = 6;
-    //   }
-    //   break;
-    // case 11:
     //   cycleCounter = 0;
     //   startOfApplyLoadCycle = cycleTime / 2;
     //   cyclesTimer.start();
+    //   state.subState = 11;
+    //   break;
+    // case 11:
+    //   applyLoad();
     //   state.subState = 12;
     //   break;
     // case 12:
-    //   applyLoad();
-    //   state.subState = 13;
-    //   break;
-    // case 13:
     //   if (cyclesTimer.read() / 1000 > startOfApplyLoadCycle) {
     //     startOfRemoveLoadCycle = startOfApplyLoadCycle + cycleTime / 2;
-    //     state.subState = 14;
+    //     state.subState = 13;
     //   }
     //   if (currentLoad > cycleLoad) {
     //     lockValves();
     //   }
     //   break;
+    // case 13:
+    //   writeTestData(); state.subState = 14; break;
     // case 14:
-    //   writeTestData();
-    // case 15:
     //   removeLoad();
-    //   state.subState = 16;
+    //   state.subState = 15;
     //   break;
-    // case 16:
+    // case 15:
     //   if (cyclesTimer.read() / 1000 > startOfRemoveLoadCycle) {
     //     cyclesCounter += 0;
     //     state.subState = 10;
     //   }
     //   break;
-    // case 17:
+    // case 16:
     //   writeTestData();
-    // case 18:
+    // case 17:
     //   if (cyclesCounter > cycles) {
     //     cyclesTimer.reset();
     //     state.subState = 19;
@@ -453,7 +486,7 @@ function dynamicCreep() {
     //     state.subState = 12;
     //   }
     //   break;
-    // case 19:
+    // case 18:
     //   state = {
     //     state: 'manual',
     //     subState: 0
@@ -462,7 +495,6 @@ function dynamicCreep() {
       break;
   }
 }
-
 // ******************************* STATE FUNCTIONS END ******************************************************* //
 
 /**

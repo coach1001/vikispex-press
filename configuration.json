@@ -75,9 +75,9 @@
           "type": "output",
           "unit": "integer",
           "dataChannel": "r0",
-          "forward": 1,
-          "reverse": 0,
-          "idle": 0,
+          "advanceValue": 1,
+          "reverseValue": 0,
+          "idleValue": 0,
           "motorChannel": 0
         }
       ]
@@ -97,6 +97,10 @@
         {
           "name": "loadDetectRealValue",
           "value": 0.25
+        },
+        {
+          "name": "motorLoadSpeed",
+          "value": 15000
         }
       ],
       "calculated": [

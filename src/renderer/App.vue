@@ -1,10 +1,12 @@
 <template>
   <div class="h-100">
+    {{data}}
+    <!-- <div id="chart">
+      <apexchart class="p-5" type="line" height="350" :options="chartOptions" :series="series"/>
+    </div> -->
     <div class="container w-100 h-100">
-      {{data}}
       <router-view></router-view>
     </div>
-
     <b-modal id="exitApplication" title="Exit Application?" hide-footer centered>
       <b-container>
         <b-row>
@@ -40,7 +42,37 @@ export default {
   name: 'vikispex-press',
   data() {
     return {
-      data: null
+      data: null,
+      series: [
+        {
+          name: 'Desktops',
+          data: [[1, 34], [3, 54], [5, 23]]
+        }
+      ],
+      chartOptions: {
+        chart: {
+          height: 350,
+          zoom: {
+            enabled: false
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+        stroke: {
+          curve: 'straight'
+        },
+        title: {
+          text: 'Product Trends by Month',
+          align: 'left'
+        },
+        grid: {
+          row: {
+            colors: ['#f3f3f3', 'transparent'], // takes an array which will be repeated on columns
+            opacity: 0.5
+          }
+        }
+      }
     }
   },
   methods: {
