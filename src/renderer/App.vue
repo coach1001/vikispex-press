@@ -1,9 +1,9 @@
 <template>
   <div class="h-100">
     {{data}}
-    <!-- <div id="chart">
+    <div id="chart">
       <apexchart class="p-5" type="line" height="350" :options="chartOptions" :series="series"/>
-    </div> -->
+    </div>
     <div class="container w-100 h-100">
       <router-view></router-view>
     </div>

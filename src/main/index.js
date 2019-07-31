@@ -317,8 +317,7 @@ function zeroDisplacement() {
     displacement[idx].rawZero = displacement[idx].rawValue;
   });
 }
-
-// ******************************* DATA FUNCTIONS ************************************************************ //
+// ******************************* DATA FUNCTIONS END ************************************************************ //
 
 // ******************************* MACHINE FUNCTIONS ********************************************************* //
 function idle() {
@@ -327,48 +326,41 @@ function idle() {
     dataOut[motorChannels[channel.motorChannel].dataChannel] = 0;
   });
 }
-
 function manualAdvance() {
   directionChannels.forEach(channel => {
     dataOut[channel.dataChannel] = channel.advanceValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
   });
 }
-
 function manualReverse() {
   directionChannels.forEach(channel => {
     dataOut[channel.dataChannel] = channel.reverseValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].manual;
   });
 }
-
 function testAdvance() {
   directionChannels.forEach(channel => {
     dataOut[channel.dataChannel] = channel.advanceValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = testData.advanceSpeed;
   });
 }
-
 function idleValves() {
   directionChannels.forEach(channel => {
     dataOut[channel.dataChannel] = channel.idleValue;
   });
 }
-
 function applyLoad() {
   directionChannels.forEach(channel => {
     dataOut[channel.dataChannel] = channel.advanceValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = testData.motorLoadSpeed;
   });
 }
-
 function removeLoad() {
   directionChannels.forEach(channel => {
     dataOut[channel.dataChannel] = channel.reverseValue;
     dataOut[motorChannels[channel.motorChannel].dataChannel] = 0;
   });
 }
-
 // ******************************* MACHINE FUNCTIONS END ***************************************************** //
 
 // ******************************* STATE FUNCTIONS *********************************************************** //
@@ -388,7 +380,6 @@ function manual() {
       break;
   }
 }
-
 function dynamicCreep() {
   switch (state.subState) {
     case 0:
