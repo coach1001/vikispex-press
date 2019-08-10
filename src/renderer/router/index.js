@@ -16,6 +16,11 @@ export default new Router({
       component: require('@/components/TestSelect').default
     },
     {
+      path: '/run-test',
+      name: 'run-test',
+      component: require('@/components/RunTest').default
+    },
+    {
       path: '*',
       redirect: '/'
     }

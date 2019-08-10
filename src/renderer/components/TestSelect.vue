@@ -1,6 +1,6 @@
-<template>
-  <div class="h-100" v-if="test">
-    <div class="row align-items-center h-100">
+<template> 
+  <div class="container d-flex h-100">
+    <div v-if="test" class="row align-items-center h-100 w-100">
       <div class="text-center display-3 cursor">&lt;</div>
       <div class="col">
         <b-card border-variant="secondary" align="center">
@@ -71,21 +71,21 @@ export default {
   },
   methods: {
     idle() {
-      ipcRenderer.send('set-state', {
-        state: 'manual',
-        subState: 0
+      ipcRenderer.send('state-set', {
+        state: 'MANUAL',
+        subState: 'IDLE'
       })
     },
     advance() {
-      ipcRenderer.send('set-state', {
-        state: 'manual',
-        subState: 1
+      ipcRenderer.send('state-set', {
+        state: 'MANUAL',
+        subState: 'ADVANCE'
       })
     },
     reverse() {
-      ipcRenderer.send('set-state', {
-        state: 'manual',
-        subState: 2
+      ipcRenderer.send('state-set', {
+        state: 'MANUAL',
+        subState: 'REVERSE'
       })
     },
     setFormData(data) {
@@ -99,11 +99,14 @@ export default {
     },
     onSubmit() {
       if (!(this.$validator.errors.items.length > 0) && this.test) {
+        this.$store.commit('SET_SELECTED_TEST_TYPE', this.test.testType)
         this.test.calculated.forEach(calc => {
           this.form[calc.name] = Number(
             math.eval(calc.calc, this.form).toFixed(calc.precision)
           )
         })
+        this.$store.commit('SET_SELECTED_TEST_PARAMS', this.form)
+        this.$router.push('/run-test')
       }
     }
   }

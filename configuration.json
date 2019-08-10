@@ -1,22 +1,22 @@
 {
   "machineSettings": {
     "type": "Dynamic Creep",
-    "commPort": "COM7",
+    "commPort": "COM6",
     "baudRate": 57600,
     "load": {
       "channels": [
         {
           "unit": "kN",
           "type": "input",
-          "dataChannel": "adc0",
+          "dataChannel": "adc2",
           "primary": true,
-          "coffA": 0.0000000000000001,
-          "coffB": 0.00000001,
-          "coffC": 0.00001,
-          "coffD": 1,
-          "calc": "value*value*value*coffA+value*value*coffB+value*coffC+coffD",
-          "realMin": -5,
-          "realMax": 160,
+          "coffA": 0,
+          "coffB": 0,
+          "coffC": 0.1,
+          "coffD": 0,
+          "calc": "value*value*value*coffA+value*value*coffB+value*coffC+coffD",          
+          "realMax": 110,
+          "realMaxWarning": 90,
           "samples": 1,
           "realValuePrecision": 2
         }
@@ -31,10 +31,12 @@
           "dataMin": 0,
           "dataMax": 1023,
           "primary": true,
-          "length": 50,
+          "length": 100,
           "calc": "(value/(dataMax-dataMin))*length",
           "realMin": 5,
-          "realMax": 45,
+          "realMinWarning": 15,
+          "realMax": 95,
+          "realMaxWarning": 85,
           "samples": 8,
           "realValuePrecision": 2
         }
@@ -62,7 +64,7 @@
           "type": "output",
           "unit": "integer",
           "dataChannel": "pwm0",
-          "mainChannel": true,
+          "primary": true,
           "outMin": 600,
           "outMax": 16000,
           "manual": 1000
@@ -83,7 +85,24 @@
       ]
     }
   },
-  "testTypes": ["RATE_OF_LOADING", "RATE_OF_DISPLACEMENT", "STATIC_CREEP", "DYNAMIC_CREEP"],
+  "testTypes": [
+    {
+      "name": "RATE_OF_LOADING"
+    },
+    {
+      "name": "RATE_OF_DISPLACEMENT"
+    },
+    {
+      "name": "STATIC_CREEP"
+    },
+    {
+      "name": "DYNAMIC_CREEP",
+      "initialState": {
+        "state": "DYNAMIC_CREEP",
+        "subState": "ZERO_LOAD"
+      }
+    }
+  ],
   "tests": [
     {
       "id": 1,
@@ -96,7 +115,7 @@
         },
         {
           "name": "loadDetectRealValue",
-          "value": 0.25
+          "value": 0.5
         },
         {
           "name": "motorLoadSpeed",
@@ -108,6 +127,11 @@
           "name": "load",
           "calc": "(((diameter/2)*(diameter/2)*pi)/1000)*stress",
           "precision": 2
+        },
+        {
+          "name": "cycleTime",
+          "calc": "(1/frequency)",
+          "precision": 5
         }
       ],
       "inputs": [
@@ -129,14 +153,14 @@
           "label": "Conditioning cycles",
           "name": "conditioningCycles",
           "validation": "required|min_value:1|numeric|max_value:200",
-          "defaultValue": 30
+          "defaultValue": 5
         },
         {
           "fieldType": "NumberInput",
           "label": "Cycles",
           "name": "cycles",
           "validation": "required|min_value:1|numeric|max_value:999999",
-          "defaultValue": 3600
+          "defaultValue": 10
         },
         {
           "fieldType": "NumberInput",

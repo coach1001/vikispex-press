@@ -11,9 +11,7 @@ import 'bootstrap-vue/dist/bootstrap-vue.css';
 import '@/assets/styles.css';
 import { fieldUtils, objectUtils } from './utilities/Utilities';
 import { VueMaskDirective } from 'v-mask';
-import VueApexCharts from 'vue-apexcharts'
 
-Vue.component('apexchart', VueApexCharts)
 Vue.use(BootstrapVue);
 Vue.use(VeeValidate, {
   inject: true,
