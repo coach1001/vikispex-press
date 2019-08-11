@@ -59,10 +59,11 @@ export default {
   },
   computed: {
     ...mapGetters({
-      connected: 'GET_CONNECTED'
+      connected: 'GET_CONNECTED',
+      uiData: 'GET_UI_DATA'
     }),
     absDisplacement() {
-      const uiData = this.$store.getters.GET_UI_DATA
+      const uiData = this.$store.getters.GET_UI_DATA;
       if (uiData.uiDisplacement) {
         const primaryDisplacement = uiData.uiDisplacement.find((channel) => channel.primary)
         return primaryDisplacement ? `${primaryDisplacement.realValue} ${primaryDisplacement.unit}` : ''

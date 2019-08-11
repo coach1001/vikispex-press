@@ -1,7 +1,7 @@
 {
   "machineSettings": {
     "type": "Dynamic Creep",
-    "commPort": "COM6",
+    "commPort": "COM11",
     "baudRate": 57600,
     "load": {
       "channels": [
@@ -12,11 +12,11 @@
           "primary": true,
           "coffA": 0,
           "coffB": 0,
-          "coffC": 0.1,
+          "coffC": 0.06,
           "coffD": 0,
           "calc": "value*value*value*coffA+value*value*coffB+value*coffC+coffD",          
-          "realMax": 110,
-          "realMaxWarning": 90,
+          "realMax": 60,
+          "realMaxWarning": 55,
           "samples": 1,
           "realValuePrecision": 2
         }
@@ -31,13 +31,13 @@
           "dataMin": 0,
           "dataMax": 1023,
           "primary": true,
-          "length": 100,
+          "length": 50,
           "calc": "(value/(dataMax-dataMin))*length",
           "realMin": 5,
           "realMinWarning": 15,
-          "realMax": 95,
-          "realMaxWarning": 85,
-          "samples": 8,
+          "realMax": 45,
+          "realMaxWarning": 40,
+          "samples": 16,
           "realValuePrecision": 2
         }
       ]
@@ -160,7 +160,7 @@
           "label": "Cycles",
           "name": "cycles",
           "validation": "required|min_value:1|numeric|max_value:999999",
-          "defaultValue": 10
+          "defaultValue": 5
         },
         {
           "fieldType": "NumberInput",
