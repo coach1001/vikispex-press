@@ -1,13 +1,17 @@
 <template>
   <div v-if="uiData" class="d-flex h-100 p-1">
     <div class="d-flex flex-row w-100">
-      <div class="flex-1 p-1">
+      <div v-if="testParams" class="flex-1 p-1">
         <b-card border-variant="secondary" class="h-100 readings">
-          <div class="row h-5">
-            <div class="col-2">Cycle</div><div class="col-2">State</div><div class="col-4">Load</div><div class="col-4">Disp.</div>          
+          <div class="row h-5 mr-1 align-items-center">
+            <div :key="idx" v-for="(header, idx) in testParams.sampleHeaders" :class="columnClass(header)">{{header.name}}</div>    
           </div>
-          <div class="list">
-            <div v-for="item in 100" class="row" :key="item"><div class="col">Cycle</div><div class="col">State</div><div class="col">Load</div><div class="col">Disp.</div></div>
+          <div id="samples" v-if="uiData.uiTestData" class="list">
+            <div :key="lidx" v-for="(sample, lidx) in uiData.uiTestData.uiTestSamples" class="row">
+              <div :key="idx" v-for="(header, idx) in testParams.sampleHeaders" :class="columnClassRow(header)">
+                {{sample[idx]}}                
+              </div>
+            </div>
           </div>          
         </b-card>
       </div>
@@ -63,6 +67,11 @@ import { ipcRenderer } from 'electron';
 
 export default {
   name: 'run-test',
+  data() {
+    return {
+      sampleCount: 0
+    }
+  },
   computed: {
     ...mapGetters({
       testParams: 'GET_SELECTED_TEST_PARAMS',
@@ -71,24 +80,32 @@ export default {
     }),
     displacementDisplay() {
       if (this.uiData.uiDisplacement) {
-        let disp = '';
+        let disp = ''
         this.uiData.uiDisplacement.forEach((ch) => {
-          disp += `${ch.realZerod} ${ch.unit} `;
+          disp += `${ch.realZerod} ${ch.unit} `
         });
-        return disp;
+        return disp
       } else {
-        return '';
+        return ''
       }
     },
     loadDisplay() {
       if (this.uiData.uiDisplacement) {
-        let load = '';
+        let load = ''
         this.uiData.uiLoad.forEach((ch) => {
-          load += `${ch.realZerod} ${ch.unit} `;
+          load += `${ch.realZerod} ${ch.unit} `
         });
-        return load;
+        return load
       } else {
-        return '';
+        return ''
+      }
+    }
+  },
+  updated() {
+    if (this.uiData) {
+      if (this.uiData.uiTestData.uiTestSamples.length > this.sampleCount) {
+        this.scroll();
+        this.sampleCount = this.uiData.uiTestData.uiTestSamples.length;
       }
     }
   },
@@ -96,24 +113,33 @@ export default {
     if (this.testParams && this.testType) {
       ipcRenderer.send('test-set', this.testParams);
       ipcRenderer.on('test-set-reply', (event, arg) => {
-        ipcRenderer.send('state-set', this.testType.initialState);
-      });
+        ipcRenderer.send('state-set', this.testType.initialState)
+      })
     } else {
       this.killTest();
-      this.$router.push('/test-select');
+      this.$router.push('/test-select')
     }
   },
   methods: {
+    scroll() {
+      document.getElementById('samples').scrollTop = document.getElementById('samples').scrollHeight
+    },
+    columnClass(header) {
+      return `col-${header.span} sample-header`
+    },
+    columnClassRow(header) {
+      return `col-${header.span} sample-row`
+    },
     backToTest() {
-      this.killTest();
-      this.$router.push('/test-select');
+      this.killTest()
+      this.$router.push('/test-select')
     },
     killTest() {
       ipcRenderer.send('state-set', {
         state: 'MANUAL',
         subState: 'IDLE'
-      });
-      ipcRenderer.send('reset-test-utilities');
+      })
+      ipcRenderer.send('reset-test-utilities')
     }
   }
 }
@@ -131,10 +157,16 @@ export default {
 }
 .list {
   height: 95% !important;
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
 }
 .card-body {
   height: 95% !important;  
+}
+.sample-header {
+  border-bottom: 1px solid #6c757d ;
+}
+.sample-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
 }
 </style>

@@ -105,7 +105,10 @@ export default {
             math.eval(calc.calc, this.form).toFixed(calc.precision)
           )
         })
-        this.$store.commit('SET_SELECTED_TEST_PARAMS', this.form)
+        this.$store.commit('SET_SELECTED_TEST_PARAMS', {
+          ...this.form,
+          sampleHeaders: this.test.sampleHeaders
+        })
         this.$router.push('/run-test')
       }
     }

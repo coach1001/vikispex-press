@@ -125,7 +125,7 @@ export default {
     });
     setInterval(() => {
       ipcRenderer.send('data-get');
-    }, 33);
+    }, 24);
   }
 };
 </script>

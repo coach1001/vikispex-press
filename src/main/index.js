@@ -22,6 +22,7 @@ let currentCycleState;
 let currentCycleLimit;
 let retryCounter;
 let connected;
+let sampleReadings;
 
 let dataOut = {
   pwm0: 0, // 16bit
@@ -151,7 +152,7 @@ function sendData() {
   port.write(`$${sOutDelimited}`);
   rxTimeout = setTimeout(() => {
     retryCounter += 1;
-    if (retryCounter > 40) {
+    if (retryCounter > 20) {
       retryCounter = 0;
       connected = false;
       clearTimeout(rxTimeout);
@@ -159,7 +160,7 @@ function sendData() {
     } else {
       sendData();
     }
-  }, 50);
+  }, 100);
 }
 
 let mainWindow;
@@ -247,6 +248,7 @@ function createUiData() {
       primary: d.primary
     });
   });
+
   if (state.state !== 'MANUAL') {
     uiTestData.elapsedTime = msToTime(mainTestTimer.read());
     uiTestData.testState = state.description;
@@ -257,6 +259,7 @@ function createUiData() {
         break;
       case 'DYNAMIC_CREEP':
         uiTestData.cycles = cycleCounter;
+        uiTestData.uiTestSamples = sampleReadings;
         break;
       case 'STATIC_CREEP':
         break;
@@ -264,6 +267,7 @@ function createUiData() {
         break;
     }
   }
+
   return {
     uiLoad,
     uiDisplacement,
@@ -381,6 +385,14 @@ function getPrimaryLoad() {
   return primaryLoad;
 }
 
+function getPrimaryDisplacement() {
+  let primaryDisplacement;
+  displacement.forEach(d => {
+    if (d.primary) primaryDisplacement = d.realZerod;
+  });
+  return primaryDisplacement;
+}
+
 function zeroLoad() {
   load.forEach((l, idx) => {
     load[idx].rawZero = load[idx].rawValue;
@@ -474,6 +486,7 @@ function dynamicCreep() {
   switch (state.subState) {
     case 'ZERO_LOAD':
       zeroLoad();
+      sampleReadings = [];
       state.subState = 'ADVANCE';
       state.description = 'Zeroing load';
       break;
@@ -510,6 +523,9 @@ function dynamicCreep() {
       if (mainTestTimer.read() / 1000 > endOfApplyLoadCycle) {
         endOfRemoveLoadCycle = endOfApplyLoadCycle + testData.cycleTime / 2;
         state.subState = 'REMOVE_LOAD';
+        if (currentCycleState === 'TEST_CYCLES') {
+          sampleReadings.push([cycleCounter, 'Load', getPrimaryLoad(), getPrimaryDisplacement()]);
+        }
       }
       if (getPrimaryLoad() > testData.load) {
         idleValves();
@@ -523,6 +539,9 @@ function dynamicCreep() {
       break;
     case 'NO_LOAD_CYCLE':
       if (mainTestTimer.read() / 1000 > endOfRemoveLoadCycle) {
+        if (currentCycleState === 'TEST_CYCLES') {
+          sampleReadings.push([cycleCounter, 'Release', getPrimaryLoad(), getPrimaryDisplacement()]);
+        }
         cycleCounter += 1;
         state.subState = 'CHECK_END';
       }
@@ -547,10 +566,10 @@ function dynamicCreep() {
       break;
     case 'DONE':
       idle();
-      state = {
-        state: 'MANUAL',
-        subState: 'IDLE'
-      };
+      // state = {
+      //   state: 'MANUAL',
+      //   subState: 'IDLE'
+      // };
       state.description = 'Test Done'
       break;
     default:
