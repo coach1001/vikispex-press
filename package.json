@@ -58,7 +58,7 @@
     "bootstrap-vue": "^2.0.0-rc.11",
     "jquery": "^3.3.1",
     "js-crc": "^0.2.0",
-    "lodash-es": "^4.17.11",
+    "lodash-es": "^4.17.14",
     "mathjs": "^5.8.0",
     "serialport": "^6.2.2",
     "statman-stopwatch": "^2.7.0",
