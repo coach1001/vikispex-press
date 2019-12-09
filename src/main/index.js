@@ -2,6 +2,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import fs from 'fs';
 
+process.setMaxListeners(0);
+
 const math = require('mathjs');
 const crc16 = require('js-crc').crc16;
 const SerialPort = require('serialport');
@@ -23,6 +25,8 @@ let currentCycleLimit;
 let retryCounter;
 let connected;
 let sampleReadings;
+let nextSampleAt;
+let defaultControl;
 
 let dataOut = {
   pwm0: 0, // 16bit
@@ -89,6 +93,7 @@ function readConfiguration() {
   loadChannels = configuration.machineSettings.load.channels;
   displacementChannels = configuration.machineSettings.displacement.channels;
   limitChannels = configuration.machineSettings.limit.channels;
+  defaultControl = configuration.defaultControl;
 
   loadChannels.forEach(() => {
     load.push({ rawZero: 0 });
@@ -254,6 +259,7 @@ function createUiData() {
     uiTestData.testState = state.description;
     switch (state.state) {
       case 'RATE_OF_LOADING':
+        uiTestData.uiTestSamples = sampleReadings;
         break;
       case 'RATE_OF_DISPLACEMENT':
         break;
@@ -363,6 +369,7 @@ app.on('activate', () => {
 
 // ******************************* TEST FUNCTIONS ************************************************************ //
 function resetTestUtilities() {
+  nextSampleAt = 0;
   currentCycleLimit = null;
   currentCycleState = null;
   cycleCounter = null;
@@ -448,6 +455,19 @@ function removeLoad() {
     // dataOut[motorChannels[channel.motorChannel].dataChannel] = 0;
   });
 }
+function motorControlAdvance(pidSpeed) {
+  directionChannels.forEach(channel => {
+    dataOut[channel.dataChannel] = channel.advanceValue;
+    dataOut[motorChannels[channel.motorChannel].dataChannel] = motorChannels[channel.motorChannel].outMin + pidSpeed;
+  });
+}
+function paceTest() {
+  const P = testData.control ? testData.control.P : defaultControl.P;
+  const I = testData.control ? testData.control.I : defaultControl.I;
+  const D = testData.control ? testData.control.D : defaultControl.D;
+  console.log(P, I, D);
+  motorControlAdvance(1000);
+}
 // ******************************* MACHINE FUNCTIONS END ***************************************************** //
 function processState() {
   switch (state.state) {
@@ -455,6 +475,7 @@ function processState() {
       manual();
       break;
     case 'RATE_OF_LOADING':
+      rateOfLoading();
       break;
     case 'RATE_OF_DISPLACEMENT':
       break;
@@ -482,10 +503,69 @@ function manual() {
       break;
   }
 }
+function rateOfLoading() {
+  switch (state.subState) {
+    case 'ZERO_LOAD':
+      zeroLoad();
+      zeroDisplacement();
+      sampleReadings = [];
+      state.subState = 'ADVANCE';
+      state.description = 'Zeroing load';
+      break;
+    case 'ADVANCE':
+      testAdvance();
+      state.subState = 'DETECT_LOAD';
+      state.description = 'Advancing';
+      break;
+    case 'DETECT_LOAD':
+      if (getPrimaryLoad() > testData.loadDetectRealValue) state.subState = 'ZERO_DISPLACEMENT';
+      state.description = 'Advancing to detect sample';
+      break;
+    case 'ZERO_DISPLACEMENT':
+      zeroDisplacement();
+      state.subState = 'INITIALIZE';
+      state.description = 'Zeroing displacement';
+      break;
+    case 'INITIALIZE':
+      mainTestTimer.reset();
+      mainTestTimer.start();
+      state.subState = 'RUNNING_TEST';
+      state.description = 'Initializing';
+      const sizeAreaInmm = testData.size * testData.size;
+      const loadkN = getPrimaryLoad();
+      const stresskPa = ((loadkN * 1000) / (sizeAreaInmm * 0.001)) * 0.001;
+      sampleReadings.push([nextSampleAt, loadkN, stresskPa.toFixed(3), getPrimaryDisplacement()]);
+      nextSampleAt += testData.samplingRate;
+      break;
+    case 'RUNNING_TEST':
+      state.description = 'Running test';
+      if ((mainTestTimer.read() / 1000) > nextSampleAt) {
+        const sizeAreaInmm = testData.size * testData.size;
+        const loadkN = getPrimaryLoad();
+        const stresskPa = ((loadkN * 1000) / (sizeAreaInmm * 0.001)) * 0.001;
+        sampleReadings.push([nextSampleAt, loadkN, stresskPa.toFixed(3), getPrimaryDisplacement()]);
+        nextSampleAt += testData.samplingRate;
+      }
+      paceTest();
+      // if (mainTestTimer.read() / 1000 > endOfApplyLoadCycle) {
+      //   endOfRemoveLoadCycle = endOfApplyLoadCycle + testData.cycleTime / 2;
+      //   state.subState = 'REMOVE_LOAD';
+      //   if (currentCycleState === 'TEST_CYCLES') {
+      //     sampleReadings.push([cycleCounter, 'Load', getPrimaryLoad(), getPrimaryDisplacement()]);
+      //   }
+      // }
+      // if (getPrimaryLoad() > testData.load) {
+      //   idleValves();
+      // }
+      // state.description = currentCycleState === 'CONDITIONING_CYCLES' ? 'Conditioning Load Cycle' : 'Test Load Cycle';
+      break;
+  }
+}
 function dynamicCreep() {
   switch (state.subState) {
     case 'ZERO_LOAD':
       zeroLoad();
+      zeroDisplacement();
       sampleReadings = [];
       state.subState = 'ADVANCE';
       state.description = 'Zeroing load';

@@ -22,10 +22,10 @@
       <b-container>
         <b-row>
           <b-col>
-            <b-button block @click="exitApplication" variant="outline-success">Yes</b-button>
+            <b-button block @click="exitApplication" variant="outline-secondary">Yes</b-button>
           </b-col>
           <b-col>
-            <b-button block @click="dismissExitApplication" variant="outline-danger">No</b-button>
+            <b-button block @click="dismissExitApplication" variant="outline-secondary">No</b-button>
           </b-col>
         </b-row>
       </b-container>

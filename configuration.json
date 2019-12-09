@@ -1,7 +1,7 @@
 {
   "machineSettings": {
     "type": "Dynamic Creep",
-    "commPort": "COM11",
+    "commPort": "/dev/tty.HC-06-SPPDev",
     "baudRate": 57600,
     "load": {
       "channels": [
@@ -12,11 +12,11 @@
           "primary": true,
           "coffA": 0,
           "coffB": 0,
-          "coffC": 0.06,
+          "coffC": 1.95,
           "coffD": 0,
-          "calc": "value*value*value*coffA+value*value*coffB+value*coffC+coffD",          
-          "realMax": 60,
-          "realMaxWarning": 55,
+          "calc": "value * value * value * coffA + value * value * coffB + value * coffC + coffD",          
+          "realMax": 2000,
+          "realMaxWarning": 1800,
           "samples": 1,
           "realValuePrecision": 2
         }
@@ -32,7 +32,7 @@
           "dataMax": 1023,
           "primary": true,
           "length": 50,
-          "calc": "(value/(dataMax-dataMin))*length",
+          "calc": "((value - dataMin) * length) / (dataMax - dataMin)",
           "realMin": 5,
           "realMinWarning": 15,
           "realMax": 45,
@@ -66,7 +66,7 @@
           "dataChannel": "pwm0",
           "primary": true,
           "outMin": 600,
-          "outMax": 16000,
+          "outMax": 16000, 
           "manual": 1000
         }
       ]
@@ -83,11 +83,20 @@
           "motorChannel": 0
         }
       ]
+    },
+    "defaultControl" : {
+      "P": 0.1,
+      "I": 0.2,
+      "D": 0.3
     }
   },
   "testTypes": [
     {
-      "name": "RATE_OF_LOADING"
+      "name": "RATE_OF_LOADING",
+      "initialState": {
+        "state": "RATE_OF_LOADING",
+        "subState": "ZERO_LOAD"
+      }
     },
     {
       "name": "RATE_OF_DISPLACEMENT"
@@ -108,7 +117,13 @@
       "id": 1,
       "name": "Dynamic Creep",
       "testType": "DYNAMIC_CREEP",
-      "constants": [
+      "sampleHeaders": [
+        { "name": "Cycle", "span": 2 },
+        { "name": "State", "span": 3 },
+        { "name": "Load (kN)", "span": 3 },
+        { "name": "Disp. (mm)", "span": 4}
+      ],
+      "constants": [        
         {
           "name": "advanceSpeed",
           "value": 1000
@@ -153,28 +168,28 @@
           "label": "Conditioning cycles",
           "name": "conditioningCycles",
           "validation": "required|min_value:1|numeric|max_value:200",
-          "defaultValue": 5
+          "defaultValue": 30
         },
         {
           "fieldType": "NumberInput",
           "label": "Cycles",
           "name": "cycles",
           "validation": "required|min_value:1|numeric|max_value:999999",
-          "defaultValue": 5
+          "defaultValue": 3600
         },
         {
           "fieldType": "NumberInput",
           "label": "Stress (kPa)",
           "name": "stress",
           "validation": "required|min_value:1|decimal:1|max_value:200",
-          "defaultValue": 20
+          "defaultValue": 100
         },
         {
           "fieldType": "NumberInput",
           "label": "Diameter (mm)",
           "name": "diameter",
           "validation": "required|min_value:10|decimal:1|max_value:500",
-          "defaultValue": 40
+          "defaultValue": 101.6
         },
         {
           "fieldType": "NumberInput",
@@ -188,7 +203,63 @@
           "label": "Sample height (mm)",
           "name": "sampleHeight",
           "validation": "required|min_value:20|decimal:1|max_value:300",
-          "defaultValue": 60
+          "defaultValue": 63.5
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "150mm Cube",
+      "testType": "RATE_OF_LOADING",
+      "sampleHeaders": [
+        { "name": "Time", "span": 2 },
+        { "name": "Load (kN)", "span": 3 },
+        { "name": "Stress (kPa)", "span": 3 },
+        { "name": "Disp. (mm)", "span": 4}
+      ],
+      "constants": [       
+        {
+          "name": "size",
+          "value": 150
+        },
+        {
+          "name": "samplingRate",
+          "value": 1
+        },
+        {
+          "name": "advanceSpeed",
+          "value": 2000
+        },
+        {
+          "name": "loadDetectRealValue",
+          "value": 2
+        },
+        {
+          "name": "loadRate",
+          "value": 200
+        },
+        {
+          "name": "control",
+          "value": {
+            "P": 0.1,
+            "I": 0.2,
+            "D": 0.3
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "fieldType": "TextInput",
+          "label": "Sample number",
+          "name": "sampleNumber",
+          "validation": "required",
+          "defaultValue": "Default"
+        },
+        {
+          "fieldType": "DatePickerInput",
+          "label": "Date",
+          "name": "date",
+          "validation": "required"
         }
       ]
     }

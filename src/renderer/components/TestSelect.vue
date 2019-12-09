@@ -99,12 +99,15 @@ export default {
     },
     onSubmit() {
       if (!(this.$validator.errors.items.length > 0) && this.test) {
+        ipcRenderer.send('reset-test-utilities');
         this.$store.commit('SET_SELECTED_TEST_TYPE', this.test.testType)
-        this.test.calculated.forEach(calc => {
-          this.form[calc.name] = Number(
-            math.eval(calc.calc, this.form).toFixed(calc.precision)
-          )
-        })
+        if (this.test.calculated) {
+          this.test.calculated.forEach(calc => {
+            this.form[calc.name] = Number(
+              math.eval(calc.calc, this.form).toFixed(calc.precision)
+            )
+          });
+        }
         this.$store.commit('SET_SELECTED_TEST_PARAMS', {
           ...this.form,
           sampleHeaders: this.test.sampleHeaders

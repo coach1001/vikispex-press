@@ -1,9 +1,9 @@
 <template>
   <div v-if="uiData" class="d-flex h-100 p-1">
     <div class="d-flex flex-row w-100">
-      <div v-if="testParams" class="flex-1 p-1">
-        <b-card border-variant="secondary" class="h-100 readings">
-          <div class="row h-5 mr-1 align-items-center">
+      <div v-if="testParams" class="flex-1-2 p-1">
+        <b-card border-variant="secondary" class="h-100 samples-card">
+          <div class="row h-5 headers">
             <div :key="idx" v-for="(header, idx) in testParams.sampleHeaders" :class="columnClass(header)">{{header.name}}</div>    
           </div>
           <div id="samples" v-if="uiData.uiTestData" class="list">
@@ -28,9 +28,14 @@
                   <b-form-input id="elapsedTime" v-model="uiData.uiTestData.elapsedTime" type="text" readonly></b-form-input>
                 </b-form-group>
               </b-col>                
-              <b-col>
+              <b-col v-if="testType.name === 'DYNAMIC_CREEP'">
                 <b-form-group label="Cycles" label-for="cycles">
                   <b-form-input id="cycles" v-model="uiData.uiTestData.cycles" type="text" readonly></b-form-input>
+                </b-form-group>
+              </b-col> 
+              <b-col v-if="testType.name !== 'DYNAMIC_CREEP'">
+                <b-form-group label="Pacing Error" label-for="pacingError">
+                  <b-form-input id="pacingError" v-model="uiData.uiTestData.pacingError" type="text" readonly></b-form-input>
                 </b-form-group>
               </b-col>                
             </b-row>
@@ -48,10 +53,10 @@
             </b-row>
             <b-row>
               <b-col>
-                <b-button block variant="outline-success" @click="backToTest">End Test</b-button>    
+                <b-button block variant="outline-secondary" @click="backToTest">End Test</b-button>    
               </b-col>
               <b-col>
-                <b-button block variant="danger" @click="backToTest">Emergency Stop</b-button>    
+                <b-button block variant="outline-secondary" @click="backToTest">Emergency Stop</b-button>    
               </b-col>            
             </b-row>
           </b-card>
@@ -103,7 +108,7 @@ export default {
   },
   updated() {
     if (this.uiData) {
-      if (this.uiData.uiTestData.uiTestSamples.length > this.sampleCount) {
+      if (this.uiData.uiTestData && this.uiData.uiTestData.uiTestSamples && this.uiData.uiTestData.uiTestSamples.length > this.sampleCount) {
         this.scroll();
         this.sampleCount = this.uiData.uiTestData.uiTestSamples.length;
       }
@@ -149,6 +154,9 @@ export default {
 .flex-1 {
   flex: 1;
 }
+.flex-1-2 {
+  flex: 1.2;
+}
 .flex-4 {
   flex: 4;
 }
@@ -156,9 +164,10 @@ export default {
   flex: 6;
 }
 .list {
-  height: 95% !important;
+  height: 94.5% !important;
   overflow-y: scroll;
   overflow-x: hidden;
+  text-align: center;
 }
 .card-body {
   height: 95% !important;  
@@ -168,5 +177,25 @@ export default {
 }
 .sample-row {
   border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+.samples-card > .card-body {
+  padding: 0px;
+}
+.samples-card > .card-body > .row {
+  margin-left: 0;
+  margin-right: 0;
+}
+.headers .row {
+  margin-left: 0;
+  align-items: center;
+}
+.headers > div {
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+  padding-right: 16px;
+}
+.headers {
+  align-items: center;
 }
 </style>
